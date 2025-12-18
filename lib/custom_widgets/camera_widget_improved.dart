@@ -227,6 +227,7 @@ class _CameraWidgetState extends State<CameraWidget>
 
   // Galerie
   List<AssetEntity> _galleryAssets = [];
+  Uint8List? _galleryThumbnail;
 
   // Configuration et debug
   late DeviceCalibration _calibration;
@@ -915,8 +916,6 @@ class _CameraWidgetState extends State<CameraWidget>
       // Upload
       await widget.uploadPhotosAction([uploadedFile]);
 
-      _showSuccess("Photo capturée !");
-
       // Redémarrer la détection
       if (mounted && !_isDisposed && _isCameraInitialized) {
         _startFaceDetection();
@@ -987,8 +986,6 @@ class _CameraWidgetState extends State<CameraWidget>
 
       await widget.uploadPhotosAction([uploadedFile]);
 
-      _showSuccess("Photo importée !");
-
     } catch (e) {
       debugPrint('❌ Erreur galerie: $e');
       _showError("Erreur import photo");
@@ -1025,9 +1022,18 @@ class _CameraWidgetState extends State<CameraWidget>
           size: 1,
         );
 
+        // Charger la thumbnail une seule fois
+        Uint8List? thumbnail;
+        if (recentAssets.isNotEmpty) {
+          thumbnail = await recentAssets.first.thumbnailDataWithSize(
+            ThumbnailSize(100, 100),
+          );
+        }
+
         if (mounted && !_isDisposed) {
           setState(() {
             _galleryAssets = recentAssets;
+            _galleryThumbnail = thumbnail;
           });
         }
       }
@@ -1061,27 +1067,6 @@ class _CameraWidgetState extends State<CameraWidget>
           margin: EdgeInsets.all(20),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  void _showSuccess(String message) {
-    if (mounted && !_isDisposed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 10),
-              Text(message),
-            ],
-          ),
-          backgroundColor: Color(0xFF00E676),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -1276,24 +1261,6 @@ class _CameraWidgetState extends State<CameraWidget>
   }
 
   Widget _buildGalleryButton() {
-    if (_galleryAssets.isEmpty) {
-      return GestureDetector(
-        onTap: _openGallery,
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.black.withValues(alpha: 0.3),
-            border: Border.all(color: Colors.white, width: 2),
-          ),
-          child: Icon(Icons.photo_library, color: Colors.white, size: 20),
-        ),
-      );
-    }
-
-    final asset = _galleryAssets.first;
-
     return GestureDetector(
       onTap: _openGallery,
       child: Container(
@@ -1305,21 +1272,15 @@ class _CameraWidgetState extends State<CameraWidget>
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: FutureBuilder<Uint8List?>(
-            future: asset.thumbnailDataWithSize(ThumbnailSize(100, 100)),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data != null) {
-                return Image.memory(
-                  snapshot.data!,
+          child: _galleryThumbnail != null
+              ? Image.memory(
+                  _galleryThumbnail!,
                   fit: BoxFit.cover,
-                );
-              }
-              return Container(
-                color: Colors.grey[800],
-                child: Icon(Icons.photo_library, color: Colors.white, size: 20),
-              );
-            },
-          ),
+                )
+              : Container(
+                  color: Colors.grey[800],
+                  child: Icon(Icons.photo_library, color: Colors.white, size: 20),
+                ),
         ),
       ),
     );
