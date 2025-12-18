@@ -220,7 +220,6 @@ class _CameraWidgetState extends State<CameraWidget>
   bool _isDisposed = false;
 
   // Feedback utilisateur
-  bool _faceDetected = false;
   bool _positionCorrect = false;
   String _feedbackMessage = "Positionnez votre visage";
   Color _feedbackColor = Colors.white;
@@ -404,7 +403,6 @@ class _CameraWidgetState extends State<CameraWidget>
   void _resetState() {
     if (mounted && !_isDisposed) {
       setState(() {
-        _faceDetected = false;
         _positionCorrect = false;
         _feedbackMessage = "Positionnez votre visage";
         _feedbackColor = Colors.white;
@@ -617,7 +615,6 @@ class _CameraWidgetState extends State<CameraWidget>
 
     setState(() {
       if (faces.isEmpty) {
-        _faceDetected = false;
         _positionCorrect = false;
         _feedbackMessage = "Positionnez votre visage";
         _feedbackColor = Colors.white;
@@ -628,7 +625,6 @@ class _CameraWidgetState extends State<CameraWidget>
       }
 
       if (faces.length > 1) {
-        _faceDetected = true;
         _positionCorrect = false;
         _feedbackMessage = "Une seule personne";
         _feedbackColor = Colors.orangeAccent;
@@ -637,7 +633,6 @@ class _CameraWidgetState extends State<CameraWidget>
         return;
       }
 
-      _faceDetected = true;
       final face = faces.first;
       final faceBounds = face.boundingBox;
       _lastFaceBounds = faceBounds;
@@ -1108,13 +1103,13 @@ class _CameraWidgetState extends State<CameraWidget>
           height: 44,
           decoration: BoxDecoration(
             color: isActive
-                ? (backgroundColor ?? Colors.amber).withOpacity(0.9)
-                : (backgroundColor ?? Colors.black).withOpacity(0.3),
+                ? (backgroundColor ?? Colors.amber).withValues(alpha: 0.9)
+                : (backgroundColor ?? Colors.black).withValues(alpha: 0.3),
             shape: BoxShape.circle,
             border: Border.all(
               color: isActive
-                  ? Colors.white.withOpacity(0.8)
-                  : Colors.white.withOpacity(0.2),
+                  ? Colors.white.withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.2),
               width: isActive ? 2 : 1,
             ),
           ),
@@ -1160,10 +1155,10 @@ class _CameraWidgetState extends State<CameraWidget>
             Container(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75),
+                color: Colors.black.withValues(alpha: 0.75),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: _feedbackColor.withOpacity(0.5),
+                  color: _feedbackColor.withValues(alpha: 0.5),
                   width: 2,
                 ),
               ),
@@ -1189,7 +1184,7 @@ class _CameraWidgetState extends State<CameraWidget>
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
@@ -1235,7 +1230,7 @@ class _CameraWidgetState extends State<CameraWidget>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Color(0xFF00E676).withOpacity(0.5),
+                          color: Color(0xFF00E676).withValues(alpha: 0.5),
                           width: 3,
                         ),
                       ),
@@ -1248,7 +1243,7 @@ class _CameraWidgetState extends State<CameraWidget>
                     shape: BoxShape.circle,
                     color: canCapture
                         ? (_positionCorrect ? Color(0xFF00E676) : Colors.orange)
-                        : Colors.white.withOpacity(0.3),
+                        : Colors.white.withValues(alpha: 0.3),
                     border: Border.all(
                       color: Colors.white,
                       width: 4,
@@ -1259,7 +1254,7 @@ class _CameraWidgetState extends State<CameraWidget>
                               color: (_positionCorrect
                                       ? Color(0xFF00E676)
                                       : Colors.orange)
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                               blurRadius: 20,
                               spreadRadius: 2,
                             ),
@@ -1289,7 +1284,7 @@ class _CameraWidgetState extends State<CameraWidget>
           height: 44,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             border: Border.all(color: Colors.white, width: 2),
           ),
           child: Icon(Icons.photo_library, color: Colors.white, size: 20),
@@ -1361,12 +1356,14 @@ class _CameraWidgetState extends State<CameraWidget>
       );
     }
 
-    return WillPopScope(
-      onWillPop: () async {
-        // Nettoyage avant de quitter
-        await _stopImageStream();
-        await _turnOffFlash();
-        return true;
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) {
+          // Nettoyage avant de quitter
+          await _stopImageStream();
+          await _turnOffFlash();
+        }
       },
       child: Stack(
         children: [
@@ -1414,7 +1411,7 @@ class _CameraWidgetState extends State<CameraWidget>
             _buildStatusIndicator(),
           if (_isProcessing)
             Container(
-              color: Colors.black.withOpacity(0.8),
+              color: Colors.black.withValues(alpha: 0.8),
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1543,11 +1540,11 @@ class MinimalGuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint darkPaint = Paint()
-      ..color = Colors.black.withOpacity(0.5)
+      ..color = Colors.black.withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
 
     final Paint borderPaint = Paint()
-      ..color = Colors.white.withOpacity(0.8)
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -1589,7 +1586,7 @@ class MinimalGuidePainter extends CustomPainter {
 
     // Ligne guide pour les yeux
     final Paint centerLinePaint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
