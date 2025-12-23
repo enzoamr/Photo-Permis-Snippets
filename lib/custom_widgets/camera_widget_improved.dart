@@ -230,6 +230,7 @@ class _CameraWidgetState extends State<CameraWidget>
   Uint8List? _galleryThumbnail;
 
   // Configuration et debug
+  static const bool _kShowDebugButton = true; // Mettre à false pour cacher le bouton debug
   late DeviceCalibration _calibration;
   Size? _actualPreviewSize;
   bool _showDebugInfo = false;
@@ -1417,13 +1418,14 @@ class _CameraWidgetState extends State<CameraWidget>
                         ),
                         Row(
                           children: [
-                            _buildModernIconButton(
-                              onPressed: _toggleDebugMode,
-                              icon: Icons.bug_report,
-                              backgroundColor: _showDebugInfo ? Colors.yellow : null,
-                              isActive: _showDebugInfo,
-                            ),
-                            SizedBox(width: 12),
+                            if (_kShowDebugButton)
+                              _buildModernIconButton(
+                                onPressed: _toggleDebugMode,
+                                icon: Icons.bug_report,
+                                backgroundColor: _showDebugInfo ? Colors.yellow : null,
+                                isActive: _showDebugInfo,
+                              ),
+                            if (_kShowDebugButton) SizedBox(width: 12),
                             if (_isRearCamera)
                               _buildModernIconButton(
                                 onPressed: _toggleFlash,
