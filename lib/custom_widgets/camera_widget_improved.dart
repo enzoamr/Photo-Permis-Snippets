@@ -620,21 +620,23 @@ class _CameraWidgetState extends State<CameraWidget>
         metadata: metadata,
       );
 
-      // Debug info Android uniquement
-      if (!Platform.isIOS && _noDetectionCount == 0) {
-        debugPrint("🤖 ANDROID DEBUG:");
-        debugPrint("  - Image size: ${image.width}x${image.height}");
-        debugPrint("  - Rotation: $imageRotation");
-        debugPrint("  - Format: $inputImageFormat");
-        debugPrint("  - Bytes: ${bytes.length}");
-        debugPrint("  - BytesPerRow: ${image.planes[0].bytesPerRow}");
-        debugPrint("  - Planes: ${image.planes.length}");
-      }
-
       final faces = await _faceDetector!.processImage(inputImage);
 
       if (faces.isEmpty) {
         _noDetectionCount++;
+
+        // Afficher les infos debug à l'écran sur Android
+        if (!Platform.isIOS && mounted) {
+          setState(() {
+            _debugInfo = "Aucun visage détecté\n"
+                "Size: ${image.width}x${image.height}\n"
+                "Rotation: $imageRotation\n"
+                "Format: ${inputImageFormat.toString().split('.').last}\n"
+                "Planes: ${image.planes.length}\n"
+                "Bytes: ${bytes.length}";
+          });
+        }
+
         if (_noDetectionCount % 30 == 0) {
           debugPrint("⚠️ Aucun visage (${_noDetectionCount}x) - Rotation: $imageRotation, Format: $inputImageFormat");
         }
@@ -646,6 +648,11 @@ class _CameraWidgetState extends State<CameraWidget>
       return faces;
     } catch (e) {
       debugPrint('❌ Erreur ML Kit: $e');
+      if (mounted) {
+        setState(() {
+          _debugInfo = "ERREUR: $e";
+        });
+      }
       return [];
     }
   }
@@ -1203,7 +1210,7 @@ class _CameraWidgetState extends State<CameraWidget>
                 ],
               ),
             ),
-            if (_showDebugInfo && _debugInfo.isNotEmpty) ...[
+            if ((_showDebugInfo || !Platform.isIOS) && _debugInfo.isNotEmpty) ...[
               SizedBox(height: 8),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1213,6 +1220,7 @@ class _CameraWidgetState extends State<CameraWidget>
                 ),
                 child: Text(
                   _debugInfo,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.yellow,
                     fontSize: 11,
