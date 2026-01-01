@@ -599,8 +599,19 @@ class _CameraWidgetState extends State<CameraWidget>
 
       final imageRotation = _getImageRotation();
 
-      // NV21 et BGRA8888 n'ont qu'un seul plan selon la doc Google ML Kit
-      final bytes = image.planes.first.bytes;
+      // Préparer les bytes selon la plateforme
+      final Uint8List bytes;
+      if (Platform.isIOS) {
+        // iOS BGRA8888 : un seul plan
+        bytes = image.planes.first.bytes;
+      } else {
+        // Android NV21 : concaténer tous les plans (Y + UV)
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        bytes = allBytes.done().buffer.asUint8List();
+      }
 
       final InputImageFormat inputImageFormat = Platform.isIOS
           ? InputImageFormat.bgra8888
