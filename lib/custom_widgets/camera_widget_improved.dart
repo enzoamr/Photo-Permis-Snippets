@@ -410,7 +410,9 @@ class _CameraWidgetState extends State<CameraWidget>
         _feedbackColor = Colors.white;
         _feedbackIcon = Icons.face_outlined;
         _lastFaceBounds = null;
-        _debugInfo = "";
+        if (!_showDebugInfo) {
+          _debugInfo = "";
+        }
         _noDetectionCount = 0;
       });
     }
@@ -622,20 +624,24 @@ class _CameraWidgetState extends State<CameraWidget>
 
       final faces = await _faceDetector!.processImage(inputImage);
 
+      // Afficher les infos debug à l'écran si le mode debug est activé
+      if (_showDebugInfo && mounted) {
+        String rotationName = imageRotation.toString().split('.').last;
+        setState(() {
+          _debugInfo = "🔍 DEBUG INFO\n"
+              "Platform: ${Platform.isIOS ? 'iOS' : 'Android'}\n"
+              "Image: ${image.width}x${image.height}\n"
+              "Rotation: $rotationName\n"
+              "Format: ${inputImageFormat.toString().split('.').last}\n"
+              "Planes: ${image.planes.length}\n"
+              "Bytes: ${bytes.length}\n"
+              "BytesPerRow: ${image.planes[0].bytesPerRow}\n"
+              "Faces: ${faces.length}";
+        });
+      }
+
       if (faces.isEmpty) {
         _noDetectionCount++;
-
-        // Afficher les infos debug à l'écran sur Android
-        if (!Platform.isIOS && mounted) {
-          setState(() {
-            _debugInfo = "Aucun visage détecté\n"
-                "Size: ${image.width}x${image.height}\n"
-                "Rotation: $imageRotation\n"
-                "Format: ${inputImageFormat.toString().split('.').last}\n"
-                "Planes: ${image.planes.length}\n"
-                "Bytes: ${bytes.length}";
-          });
-        }
 
         if (_noDetectionCount % 30 == 0) {
           debugPrint("⚠️ Aucun visage (${_noDetectionCount}x) - Rotation: $imageRotation, Format: $inputImageFormat");
@@ -648,9 +654,9 @@ class _CameraWidgetState extends State<CameraWidget>
       return faces;
     } catch (e) {
       debugPrint('❌ Erreur ML Kit: $e');
-      if (mounted) {
+      if (_showDebugInfo && mounted) {
         setState(() {
-          _debugInfo = "ERREUR: $e";
+          _debugInfo = "❌ ERREUR ML KIT:\n$e";
         });
       }
       return [];
@@ -667,8 +673,8 @@ class _CameraWidgetState extends State<CameraWidget>
         _feedbackColor = Colors.white;
         _feedbackIcon = Icons.face_outlined;
         _lastFaceBounds = null;
-        // Sur iOS uniquement, sinon on garde les infos debug Android
-        if (Platform.isIOS) {
+        // Ne pas écraser les infos debug si le mode debug est activé
+        if (!_showDebugInfo) {
           _debugInfo = "Aucun visage";
         }
         return;
@@ -679,7 +685,9 @@ class _CameraWidgetState extends State<CameraWidget>
         _feedbackMessage = "Une seule personne";
         _feedbackColor = Colors.orangeAccent;
         _feedbackIcon = Icons.people_outline;
-        _debugInfo = "${faces.length} visages";
+        if (!_showDebugInfo) {
+          _debugInfo = "${faces.length} visages";
+        }
         return;
       }
 
@@ -688,7 +696,9 @@ class _CameraWidgetState extends State<CameraWidget>
       _lastFaceBounds = faceBounds;
 
       if (_actualPreviewSize == null) {
-        _debugInfo = "Preview size indisponible";
+        if (!_showDebugInfo) {
+          _debugInfo = "Preview size indisponible";
+        }
         return;
       }
 
@@ -808,9 +818,13 @@ class _CameraWidgetState extends State<CameraWidget>
         _feedbackMessage = "Parfait !";
         _feedbackColor = Color(0xFF00E676);
         _feedbackIcon = Icons.check_circle_outline;
-        _debugInfo = debugStr + "✅";
+        if (!_showDebugInfo) {
+          _debugInfo = debugStr + "✅";
+        }
       } else {
-        _debugInfo = debugStr + failReason;
+        if (!_showDebugInfo) {
+          _debugInfo = debugStr + failReason;
+        }
       }
     });
   }
@@ -1095,6 +1109,9 @@ class _CameraWidgetState extends State<CameraWidget>
     if (mounted && !_isDisposed) {
       setState(() {
         _showDebugInfo = !_showDebugInfo;
+        if (!_showDebugInfo) {
+          _debugInfo = ""; // Réinitialiser les infos debug quand on désactive
+        }
       });
       debugPrint("🐛 Mode debug: ${_showDebugInfo ? 'ON' : 'OFF'}");
     }
