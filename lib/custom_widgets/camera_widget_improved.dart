@@ -455,7 +455,7 @@ class _CameraWidgetState extends State<CameraWidget>
       enableAudio: false,
       imageFormatGroup: Platform.isIOS
           ? ImageFormatGroup.bgra8888
-          : ImageFormatGroup.yuv420,
+          : ImageFormatGroup.nv21,
     );
 
     try {
@@ -608,7 +608,7 @@ class _CameraWidgetState extends State<CameraWidget>
 
       final InputImageFormat inputImageFormat = Platform.isIOS
           ? InputImageFormat.bgra8888
-          : InputImageFormat.yuv_420_888;
+          : InputImageFormat.nv21;
 
       final metadata = InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
