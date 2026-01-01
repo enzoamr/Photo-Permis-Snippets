@@ -560,38 +560,48 @@ class _CameraWidgetState extends State<CameraWidget>
     );
 
     final sensorOrientation = camera.sensorOrientation;
-    return InputImageRotationValue.fromRawValue(sensorOrientation) ??
-        InputImageRotation.rotation0deg;
+
+    // Sur Android, on doit ajuster la rotation selon l'orientation du capteur
+    // Sur iOS, la rotation est généralement correcte directement
+    InputImageRotation rotation;
+
+    if (Platform.isIOS) {
+      // iOS: utiliser directement l'orientation du capteur
+      rotation = InputImageRotationValue.fromRawValue(sensorOrientation) ??
+          InputImageRotation.rotation0deg;
+    } else {
+      // Android: ajustement pour caméra frontale vs arrière
+      if (_isRearCamera) {
+        rotation = InputImageRotationValue.fromRawValue(sensorOrientation) ??
+            InputImageRotation.rotation90deg;
+      } else {
+        // Caméra frontale: peut nécessiter un ajustement différent
+        rotation = InputImageRotationValue.fromRawValue(sensorOrientation) ??
+            InputImageRotation.rotation270deg;
+      }
+    }
+
+    debugPrint("📐 Rotation calculée: $rotation (Sensor: $sensorOrientation°, isRear: $_isRearCamera, iOS: ${Platform.isIOS})");
+
+    return rotation;
   }
 
   Future<List<Face>> _detectFacesFromCameraImage(CameraImage image) async {
     try {
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final Plane plane in image.planes) {
-        allBytes.putUint8List(plane.bytes);
-      }
-      final bytes = allBytes.done().buffer.asUint8List();
-
-      final Size imageSize = Size(
-        image.width.toDouble(),
-        image.height.toDouble(),
+      // Utiliser InputImage.fromCameraImage pour gérer automatiquement
+      // les différences de format entre iOS (BGRA8888) et Android (YUV420/NV21)
+      final camera = _cameras.firstWhere(
+        (c) => c.lensDirection == (_isRearCamera
+            ? CameraLensDirection.back
+            : CameraLensDirection.front),
+        orElse: () => _cameras.first,
       );
 
       final imageRotation = _getImageRotation();
-      final InputImageFormat inputImageFormat = Platform.isIOS
-          ? InputImageFormat.bgra8888
-          : InputImageFormat.yuv_420_888;
 
-      final InputImageMetadata metadata = InputImageMetadata(
-        size: imageSize,
+      final InputImage inputImage = InputImage.fromCameraImage(
+        image,
         rotation: imageRotation,
-        format: inputImageFormat,
-        bytesPerRow: image.planes.isNotEmpty ? image.planes[0].bytesPerRow : 0,
-      );
-
-      final InputImage inputImage = InputImage.fromBytes(
-        bytes: bytes,
-        metadata: metadata,
       );
 
       final faces = await _faceDetector!.processImage(inputImage);
@@ -599,10 +609,13 @@ class _CameraWidgetState extends State<CameraWidget>
       if (faces.isEmpty) {
         _noDetectionCount++;
         if (_noDetectionCount % 30 == 0) {
-          debugPrint("⚠️ Aucun visage (${_noDetectionCount}x)");
+          debugPrint("⚠️ Aucun visage (${_noDetectionCount}x) - Rotation: $imageRotation");
         }
       } else {
         _noDetectionCount = 0;
+        if (_noDetectionCount == 0) {
+          debugPrint("✅ Visage détecté ! Rotation: $imageRotation");
+        }
       }
 
       return faces;
