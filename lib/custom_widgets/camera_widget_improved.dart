@@ -597,43 +597,38 @@ class _CameraWidgetState extends State<CameraWidget>
 
       final imageRotation = _getImageRotation();
 
-      // Créer InputImage selon la plateforme
-      InputImage inputImage;
+      // Concaténer tous les plans
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
 
-      if (Platform.isIOS) {
-        // iOS: format BGRA8888 - on peut concaténer les plans
-        final WriteBuffer allBytes = WriteBuffer();
-        for (final Plane plane in image.planes) {
-          allBytes.putUint8List(plane.bytes);
-        }
-        final bytes = allBytes.done().buffer.asUint8List();
+      final InputImageFormat inputImageFormat = Platform.isIOS
+          ? InputImageFormat.bgra8888
+          : InputImageFormat.yuv_420_888;
 
-        final metadata = InputImageMetadata(
-          size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: imageRotation,
-          format: InputImageFormat.bgra8888,
-          bytesPerRow: image.planes[0].bytesPerRow,
-        );
+      final metadata = InputImageMetadata(
+        size: Size(image.width.toDouble(), image.height.toDouble()),
+        rotation: imageRotation,
+        format: inputImageFormat,
+        bytesPerRow: image.planes[0].bytesPerRow,
+      );
 
-        inputImage = InputImage.fromBytes(
-          bytes: bytes,
-          metadata: metadata,
-        );
-      } else {
-        // Android: format NV21/YUV420 - utiliser seulement le plan Y
-        final bytes = image.planes[0].bytes;
+      final inputImage = InputImage.fromBytes(
+        bytes: bytes,
+        metadata: metadata,
+      );
 
-        final metadata = InputImageMetadata(
-          size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: imageRotation,
-          format: InputImageFormat.nv21,
-          bytesPerRow: image.planes[0].bytesPerRow,
-        );
-
-        inputImage = InputImage.fromBytes(
-          bytes: bytes,
-          metadata: metadata,
-        );
+      // Debug info Android uniquement
+      if (!Platform.isIOS && _noDetectionCount == 0) {
+        debugPrint("🤖 ANDROID DEBUG:");
+        debugPrint("  - Image size: ${image.width}x${image.height}");
+        debugPrint("  - Rotation: $imageRotation");
+        debugPrint("  - Format: $inputImageFormat");
+        debugPrint("  - Bytes: ${bytes.length}");
+        debugPrint("  - BytesPerRow: ${image.planes[0].bytesPerRow}");
+        debugPrint("  - Planes: ${image.planes.length}");
       }
 
       final faces = await _faceDetector!.processImage(inputImage);
@@ -641,13 +636,11 @@ class _CameraWidgetState extends State<CameraWidget>
       if (faces.isEmpty) {
         _noDetectionCount++;
         if (_noDetectionCount % 30 == 0) {
-          debugPrint("⚠️ Aucun visage (${_noDetectionCount}x) - Rotation: $imageRotation");
+          debugPrint("⚠️ Aucun visage (${_noDetectionCount}x) - Rotation: $imageRotation, Format: $inputImageFormat");
         }
       } else {
         _noDetectionCount = 0;
-        if (_noDetectionCount == 0) {
-          debugPrint("✅ Visage détecté ! Rotation: $imageRotation");
-        }
+        debugPrint("✅ Visage détecté ! Rotation: $imageRotation, Faces: ${faces.length}");
       }
 
       return faces;
