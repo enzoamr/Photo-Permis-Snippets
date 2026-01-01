@@ -588,8 +588,6 @@ class _CameraWidgetState extends State<CameraWidget>
 
   Future<List<Face>> _detectFacesFromCameraImage(CameraImage image) async {
     try {
-      // Utiliser InputImage.fromCameraImage pour gérer automatiquement
-      // les différences de format entre iOS (BGRA8888) et Android (YUV420/NV21)
       final camera = _cameras.firstWhere(
         (c) => c.lensDirection == (_isRearCamera
             ? CameraLensDirection.back
@@ -599,10 +597,44 @@ class _CameraWidgetState extends State<CameraWidget>
 
       final imageRotation = _getImageRotation();
 
-      final InputImage inputImage = InputImage.fromCameraImage(
-        image,
-        rotation: imageRotation,
-      );
+      // Créer InputImage selon la plateforme
+      InputImage inputImage;
+
+      if (Platform.isIOS) {
+        // iOS: format BGRA8888 - on peut concaténer les plans
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        final bytes = allBytes.done().buffer.asUint8List();
+
+        final metadata = InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: imageRotation,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        );
+
+        inputImage = InputImage.fromBytes(
+          bytes: bytes,
+          metadata: metadata,
+        );
+      } else {
+        // Android: format NV21/YUV420 - utiliser seulement le plan Y
+        final bytes = image.planes[0].bytes;
+
+        final metadata = InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: imageRotation,
+          format: InputImageFormat.nv21,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        );
+
+        inputImage = InputImage.fromBytes(
+          bytes: bytes,
+          metadata: metadata,
+        );
+      }
 
       final faces = await _faceDetector!.processImage(inputImage);
 
