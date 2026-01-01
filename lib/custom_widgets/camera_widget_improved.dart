@@ -667,7 +667,10 @@ class _CameraWidgetState extends State<CameraWidget>
         _feedbackColor = Colors.white;
         _feedbackIcon = Icons.face_outlined;
         _lastFaceBounds = null;
-        _debugInfo = "Aucun visage";
+        // Sur iOS uniquement, sinon on garde les infos debug Android
+        if (Platform.isIOS) {
+          _debugInfo = "Aucun visage";
+        }
         return;
       }
 
